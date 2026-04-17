@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Finding a match</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <link rel="stylesheet" href="../css/call.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1/dist/iife/sdk.min.js"></script>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <nav class="nav">
+    <div class="nav-logo">IU</div>
+    <div class="nav-links">
+      <span id="userGreeting" style="font-size:14px;color:var(--muted);font-family:var(--mono)"></span>
+      <button class="btn-secondary" onclick="logout()" style="padding:8px 18px;font-size:13px;">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="queue-page">
+    <div class="queue-orb">
+      <span class="queue-inner-icon" id="queueIcon">&#9670;</span>
+    </div>
+
+    <div style="text-align:center;">
+      <h1 class="queue-title" id="queueTitle">Looking for someone to talk to</h1>
+      <p class="queue-sub" id="queueSub">You will be matched with a random person. Audio only — no video until you both agree.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <span class="queue-count" id="queueCount">Searching...</span>
+      <div id="queueActions" style="display:flex;gap:12px;">
+        <button class="btn-primary btn-large" id="findBtn" onclick="joinQueue()">Find someone</button>
+      </div>
+    </div>
+
+    <div style="max-width:360px;width:100%;">
+      <div class="how-section" style="flex-direction:column;">
+        <div class="how-step" style="padding:20px 24px;">
+          <div class="step-num">01</div>
+          <div class="step-text">
+            <strong>Audio only</strong>
+            <span>You will hear your match but not see them. Text chat is also available.</span>
+          </div>
+        </div>
+        <div class="how-divider" style="width:100%;height:1px;"></div>
+        <div class="how-step" style="padding:20px 24px;">
+          <div class="step-num">02</div>
+          <div class="step-text">
+            <strong>15 minutes</strong>
+            <span>After the timer ends, you both get to vote on revealing your cameras.</span>
+          </div>
+        </div>
+        <div class="how-divider" style="width:100%;height:1px;"></div>
+        <div class="how-step" style="padding:20px 24px;">
+          <div class="step-num">03</div>
+          <div class="step-text">
+            <strong>Stay safe</strong>
+            <span>You can report, block or exit at any time. Moderation is active.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script src="../js/appwrite.js"></script>
+  <script src="../js/auth-guard.js"></script>
+  <script>
+    let currentUser = null;
+    let mySessionDoc = null;
+    let sessionUnsub = null;
+    let pollInterval = null;
+
+    async function init() {
+      currentUser = await requireAuth('login.html');
+      if (!currentUser) return;
+
+      document.getElementById('userGreeting').textContent = currentUser.profile?.name || currentUser.email;
+    }
+
+    async function joinQueue() {
+      const btn = document.getElementById('findBtn');
+      btn.disabled = true;
+      btn.textContent = 'Searching...';
+      document.getElementById('queueCount').textContent = 'Joining queue...';
+
+      try {
+        // Create my session doc (status: waiting)
+        mySessionDoc = await createSession(currentUser.$id);
+
+        // Start polling for a match
+        startMatchPolling();
+
+        btn.style.display = 'none';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-secondary';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = cancelQueue;
+        document.getElementById('queueActions').appendChild(cancelBtn);
+
+        showToast('In queue — finding your match...', 'info');
+      } catch (err) {
+        showToast('Failed to join queue. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Find someone';
+      }
+    }
+
+    function startMatchPolling() {
+      let elapsed = 0;
+
+      // Subscribe to my session for changes
+      sessionUnsub = subscribeToSession(mySessionDoc.$id, async (session) => {
+        if (session.status === 'matched') {
+          clearInterval(pollInterval);
+          onMatched(session);
+        }
+      });
+
+      // Also actively try to match every 3 seconds (poll + realtime = reliable)
+      pollInterval = setInterval(async () => {
+        elapsed += 3;
+        document.getElementById('queueCount').textContent = `Searching... ${elapsed}s elapsed`;
+        await tryMatch();
+      }, 3000);
+
+      // Immediate attempt
+      tryMatch();
+    }
+
+    async function tryMatch() {
+      if (!mySessionDoc) return;
+
+      // Re-fetch my session to make sure I'm still waiting
+      try {
+        const db = getDatabases();
+        const mine = await db.getDocument(
+          APPWRITE_CONFIG.databaseId,
+          APPWRITE_CONFIG.collections.sessions,
+          mySessionDoc.$id
+        );
+        if (mine.status !== 'waiting') return;
+
+        // Find another waiting user
+        const partner = await findWaitingSession(currentUser.$id);
+        if (!partner) return;
+
+        // Atomically claim the match (I become initiator)
+        const roomId = `room_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
+        // Update partner's session
+        await updateSession(partner.$id, {
+          status: 'matched',
+          partnerId: currentUser.$id,
+          partnerSessionId: mySessionDoc.$id,
+          roomId,
+          isInitiator: false,
+          startedAt: new Date().toISOString(),
+          signalFromInitiator: '[]',
+          signalFromReceiver: '[]',
+        });
+
+        // Update my session
+        await updateSession(mySessionDoc.$id, {
+          status: 'matched',
+          partnerId: partner.userId,
+          partnerSessionId: partner.$id,
+          roomId,
+          isInitiator: true,
+          startedAt: new Date().toISOString(),
+          signalFromInitiator: '[]',
+          signalFromReceiver: '[]',
+        });
+
+        // Navigate to call page
+        clearInterval(pollInterval);
+        onMatched({
+          status: 'matched',
+          partnerId: partner.userId,
+          partnerSessionId: partner.$id,
+          roomId,
+          isInitiator: true,
+        });
+
+      } catch (err) {
+        // Likely a race condition (partner already matched) — retry next poll
+        console.log('Match attempt failed (race):', err.message);
+      }
+    }
+
+    function onMatched(session) {
+      if (sessionUnsub) { sessionUnsub(); sessionUnsub = null; }
+      clearInterval(pollInterval);
+
+      showToast('Match found! Starting call...', 'success');
+
+      // Store session info for the call page
+      sessionStorage.setItem('iu_session', JSON.stringify({
+        sessionId: mySessionDoc.$id,
+        partnerSessionId: session.partnerSessionId || session.partnerId,
+        roomId: session.roomId,
+        isInitiator: session.isInitiator !== false,
+      }));
+
+      setTimeout(() => window.location.href = 'call.html', 800);
+    }
+
+    async function cancelQueue() {
+      clearInterval(pollInterval);
+      if (sessionUnsub) { sessionUnsub(); sessionUnsub = null; }
+      if (mySessionDoc) {
+        await updateSession(mySessionDoc.$id, { status: 'ended' }).catch(() => {});
+        mySessionDoc = null;
+      }
+      document.getElementById('findBtn').style.display = '';
+      document.getElementById('findBtn').disabled = false;
+      document.getElementById('findBtn').textContent = 'Find someone';
+      const cancelBtn = document.querySelector('#queueActions .btn-secondary');
+      if (cancelBtn) cancelBtn.remove();
+      document.getElementById('queueCount').textContent = 'Search cancelled.';
+      showToast('Left the queue.', 'info');
+    }
+
+    init();
+  </script>
+</body>
+</html>

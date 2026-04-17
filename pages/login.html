@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <link rel="stylesheet" href="../css/auth.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1/dist/iife/sdk.min.js"></script>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="auth-page">
+    <div class="auth-card">
+      <a href="../index.html" class="auth-logo">IU</a>
+
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Sign in to start a new connection.</p>
+
+      <form class="auth-form" id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" type="email" id="email" placeholder="you@example.com" autocomplete="email" required/>
+          <span class="form-error" id="emailError"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" placeholder="Your password" autocomplete="current-password" required/>
+          <span class="form-error" id="passwordError"></span>
+        </div>
+
+        <button type="submit" class="btn-primary submit-btn" id="submitBtn">
+          <span class="btn-text">Sign in</span>
+          <span class="btn-spinner"><span class="spinner"></span></span>
+        </button>
+      </form>
+
+      <p class="auth-footer-link">
+        No account? <a href="register.html">Create one</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script src="../js/appwrite.js"></script>
+  <script src="../js/auth-guard.js"></script>
+  <script>
+    checkLoggedIn().then(u => { if (u) window.location.href = 'queue.html'; });
+
+    const form = document.getElementById('loginForm');
+    const btn  = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('emailError').textContent = '';
+      document.getElementById('passwordError').textContent = '';
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      try {
+        await login({ email, password });
+        showToast('Signed in. Finding you a match...', 'success');
+        setTimeout(() => window.location.href = 'queue.html', 900);
+      } catch (err) {
+        const msg = err.message || 'Sign in failed.';
+        if (msg.toLowerCase().includes('suspend')) {
+          showToast(msg, 'error');
+        } else {
+          document.getElementById('emailError').textContent = 'Invalid email or password.';
+          document.getElementById('email').classList.add('error');
+        }
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
