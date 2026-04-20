@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      position: relative;
+    }
+    .auth-page::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 40%, rgba(0,220,255,0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 1;
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .auth-header {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-bottom: none;
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .auth-logo { font-family:var(--font-hd); font-size:20px; font-weight:900; letter-spacing:0.05em; text-decoration:none; }
+    .auth-logo .c { color: var(--cyan); }
+    .auth-body {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 40px;
+      position: relative;
+    }
+    .auth-body::before, .auth-body::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      border-color: var(--cyan);
+      border-style: solid;
+    }
+    .auth-body::before { bottom:-1px; left:-1px; border-width:0 0 2px 2px; }
+    .auth-body::after  { bottom:-1px; right:-1px; border-width:0 2px 2px 0; }
+
+    .auth-title { font-family:var(--font-hd); font-size:22px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--white); margin-bottom:6px; }
+    .auth-sub { font-size:13px; color:var(--muted); margin-bottom:32px; }
+    .auth-form { display:flex; flex-direction:column; gap:20px; }
+
+    .submit-btn { width:100%; padding:16px; font-size:14px; position:relative; clip-path:none; }
+    .submit-btn .btn-text { transition:opacity 0.2s; }
+    .submit-btn .btn-spin { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:none; }
+    .submit-btn.loading .btn-text { opacity:0; }
+    .submit-btn.loading .btn-spin { display:block; }
+
+    .auth-footer { text-align:center; margin-top:24px; font-size:13px; color:var(--muted); font-family:var(--font-mono); }
+    .auth-footer a { color:var(--cyan); text-decoration:none; }
+    .auth-footer a:hover { text-shadow:0 0 8px var(--cyan); }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1/dist/iife/sdk.min.js"></script>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo"><span class="part1">IU</span><span class="part2">CONNECT</span></a>
+    <div class="nav-links">
+      <a href="register.html" class="nav-link">Register</a>
+    </div>
+    <a href="login.html" class="nav-cta">Sign In</a>
+  </nav>
+
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-header">
+        <a href="../index.html" class="auth-logo">IU<span class="c">CONNECT</span></a>
+        <span class="badge badge-white">18+ Platform</span>
+      </div>
+      <div class="auth-body">
+        <h1 class="auth-title">Welcome Back</h1>
+        <p class="auth-sub">Sign in to start a new session.</p>
+
+        <form class="auth-form" id="loginForm">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" type="email" id="email" placeholder="your@email.com" required/>
+            <span class="form-error" id="emailError"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="form-input" type="password" id="password" placeholder="Your password" required/>
+            <span class="form-error" id="passwordError"></span>
+          </div>
+          <button type="submit" class="btn-cyan submit-btn" id="submitBtn">
+            <span class="btn-text">Sign In</span>
+            <span class="btn-spin"><span class="spinner"></span></span>
+          </button>
+        </form>
+
+        <p class="auth-footer">No account? <a href="register.html">Register here</a></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+  <script src="../js/appwrite.js"></script>
+  <script src="../js/auth-guard.js"></script>
+  <script>
+    checkLoggedIn().then(u => { if (u) window.location.href = 'queue.html'; });
+    const form = document.getElementById('loginForm');
+    const btn  = document.getElementById('submitBtn');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      document.getElementById('emailError').textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      btn.classList.add('loading'); btn.disabled=true;
+      try {
+        await login({ email, password });
+        showToast('Signed in. Finding your match...', 'success');
+        setTimeout(() => window.location.href = 'queue.html', 900);
+      } catch(err) {
+        const msg = err.message||'';
+        if (msg.includes('suspend')) showToast(msg,'error');
+        else {
+          document.getElementById('emailError').textContent = 'Invalid email or password.';
+          document.getElementById('email').classList.add('error');
+        }
+        btn.classList.remove('loading'); btn.disabled=false;
+      }
+    });
+  </script>
+</body>
+</html>
