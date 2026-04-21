@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Matchmaking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <style>
+    .queue-page {
+      min-height:100vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:44px;
+      padding:80px 20px; position:relative; z-index:1;
+    }
+
+    /* RADAR */
+    .radar {
+      position:relative; width:200px; height:200px; flex-shrink:0;
+    }
+    .r-ring {
+      position:absolute; border:1px solid; border-radius:50%;
+      border-color: var(--border2);
+    }
+    .r-ring:nth-child(1) { inset:0; }
+    .r-ring:nth-child(2) { inset:26px; border-color:var(--border); }
+    .r-ring:nth-child(3) { inset:52px; border-color:var(--cyan); border-width:2px; }
+    .r-cross-h,.r-cross-v { position:absolute; background:rgba(0,220,255,0.15); }
+    .r-cross-h { top:50%;left:0;right:0;height:1px;transform:translateY(-50%); }
+    .r-cross-v { left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%); }
+    .r-sweep {
+      position:absolute; inset:0; border-radius:50%;
+      background:conic-gradient(from 0deg,transparent 65%,rgba(0,220,255,0.45) 85%,rgba(0,220,255,0.12) 100%);
+      display:none;
+    }
+    .r-sweep.active { display:block; animation:sweep 2.2s linear infinite; }
+    @keyframes sweep { to{transform:rotate(360deg)} }
+    .r-center {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:10px; height:10px; background:var(--cyan); border-radius:50%;
+      box-shadow:0 0 14px var(--cyan),0 0 30px rgba(0,220,255,0.4);
+    }
+    .r-blip {
+      position:absolute; width:7px; height:7px; border-radius:50%;
+      background:var(--magenta); box-shadow:0 0 8px var(--magenta);
+      opacity:0; animation:blip 2.4s ease-in-out infinite;
+    }
+    @keyframes blip { 0%,100%{opacity:0} 50%{opacity:1} }
+
+    .queue-title {
+      font-family:var(--font-hd); font-size:26px; font-weight:900;
+      letter-spacing:0.08em; text-transform:uppercase;
+      color:var(--white); text-align:center;
+    }
+    .queue-sub { font-family:var(--font-mono); font-size:13px; color:var(--muted); text-align:center; letter-spacing:0.04em; max-width:400px; line-height:1.6; }
+
+    .queue-status {
+      display:none; align-items:center; gap:10px;
+      font-family:var(--font-mono); font-size:12px; color:var(--cyan);
+      letter-spacing:0.1em; text-transform:uppercase;
+    }
+    .queue-status.visible { display:flex; }
+    .q-dot { width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+    .q-actions { display:flex; gap:16px; }
+
+    .rules-panel {
+      width:100%; max-width:520px;
+      background:var(--bg2); border:1px solid var(--border); position:relative;
+    }
+    .rules-panel::before { content:'';position:absolute;top:-1px;left:-1px;width:14px;height:14px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan); }
+    .rules-panel::after  { content:'';position:absolute;bottom:-1px;right:-1px;width:14px;height:14px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan); }
+    .rules-head { padding:14px 22px;border-bottom:1px solid var(--border);font-family:var(--font-hd);font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--cyan); }
+    .rules-row { display:flex;align-items:flex-start;gap:14px;padding:14px 22px;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted);line-height:1.5; }
+    .rules-row:last-child { border-bottom:none; }
+    .rules-num { font-family:var(--font-mono);font-size:10px;color:var(--cyan);flex-shrink:0;padding-top:2px; }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">IU<span class="c">CONNECT</span></a>
+    <div class="nav-links">
+      <span id="greeting" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:0.06em;"></span>
+    </div>
+    <button class="nav-cta" onclick="IU.logout()">Exit</button>
+  </nav>
+
+  <div class="queue-page">
+    <div class="radar" id="radar">
+      <div class="r-ring"></div>
+      <div class="r-ring"></div>
+      <div class="r-ring"></div>
+      <div class="r-cross-h"></div>
+      <div class="r-cross-v"></div>
+      <div class="r-sweep" id="sweep"></div>
+      <div class="r-center"></div>
+      <div class="r-blip" id="b1" style="top:28%;left:64%;animation-delay:0s;"></div>
+      <div class="r-blip" id="b2" style="top:60%;left:22%;animation-delay:0.9s;"></div>
+      <div class="r-blip" id="b3" style="top:38%;left:44%;animation-delay:1.6s;display:none;"></div>
+    </div>
+
+    <h1 class="queue-title" id="qTitle">Ready to Connect?</h1>
+    <p class="queue-sub" id="qSub">Open two browser tabs and sign into two accounts — they will match each other automatically.</p>
+
+    <div class="queue-status" id="qStatus">
+      <div class="q-dot"></div>
+      <span id="qStatusTxt">Searching...</span>
+    </div>
+
+    <div class="q-actions" id="qActions">
+      <button class="btn-cyan" id="findBtn" onclick="joinQueue()">Find Someone</button>
+    </div>
+
+    <div class="rules-panel">
+      <div class="rules-head">Session Rules</div>
+      <div class="rules-row"><span class="rules-num">01</span><span>You start in <strong style="color:var(--white);">audio-only mode</strong> — voice and text chat. No cameras, no judgement.</span></div>
+      <div class="rules-row"><span class="rules-num">02</span><span>After <strong style="color:var(--white);">15 minutes</strong>, both vote. Mutual accept = cameras on. One decline = session ends.</span></div>
+      <div class="rules-row"><span class="rules-num">03</span><span>You can <strong style="color:var(--magenta);">report, mute, or exit</strong> at any moment. Your safety always comes first.</span></div>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script src="../js/iu.js"></script>
+  <script>
+    const user = IU.requireAuth('login.html');
+    if (!user) throw new Error('Not logged in');
+
+    document.getElementById('greeting').textContent = user.name || user.email;
+
+    let myPeerId = IU.uid();
+    let searching = false;
+    let searchInterval = null;
+    let elapsed = 0;
+
+    function joinQueue() {
+      if (searching) return;
+      searching = true;
+      document.getElementById('sweep').classList.add('active');
+      document.getElementById('b3').style.display = 'block';
+      document.getElementById('qTitle').textContent = 'Scanning for a Match';
+      document.getElementById('qStatus').classList.add('visible');
+      document.getElementById('findBtn').style.display = 'none';
+
+      // Add cancel btn
+      const cancel = document.createElement('button');
+      cancel.className = 'btn-outline'; cancel.textContent = 'Cancel';
+      cancel.onclick = cancelQueue;
+      document.getElementById('qActions').appendChild(cancel);
+
+      // Enter queue
+      IU.joinQueue(myPeerId);
+
+      // Listen for match offer from another tab
+      IU.onChannel('match_offer', ({ to, from, roomId }) => {
+        if (to !== myPeerId) return;
+        // We are the receiver — accept
+        IU.leaveQueue(myPeerId);
+        IU.sendChannel('match_accept', { to: from, from: myPeerId, roomId });
+        clearInterval(searchInterval);
+        onMatched({ roomId, isInitiator: false, partnerId: from });
+      });
+
+      // Poll for available partner
+      searchInterval = setInterval(() => {
+        elapsed++;
+        document.getElementById('qStatusTxt').textContent = `Scanning... ${elapsed}s`;
+        attemptMatch();
+      }, 2000);
+      attemptMatch();
+    }
+
+    function attemptMatch() {
+      if (!searching) return;
+      const partner = IU.findMatch(myPeerId);
+      if (!partner) return;
+
+      // Send offer to partner
+      const roomId = 'room_' + IU.uid();
+      IU.sendChannel('match_offer', { to: partner.id, from: myPeerId, roomId });
+
+      // Wait for accept (100ms poll x 10)
+      let tries = 0;
+      const wait = setInterval(() => {
+        tries++;
+        if (tries > 10) { clearInterval(wait); return; }
+      }, 200);
+
+      IU.onChannel('match_accept', ({ to, from, roomId: r }) => {
+        if (to !== myPeerId) return;
+        clearInterval(wait);
+        clearInterval(searchInterval);
+        IU.leaveQueue(myPeerId);
+        onMatched({ roomId: r, isInitiator: true, partnerId: from });
+      });
+    }
+
+    function onMatched({ roomId, isInitiator, partnerId }) {
+      searching = false;
+      document.getElementById('qTitle').textContent = 'Match Found';
+      document.getElementById('qStatusTxt').textContent = 'Connecting...';
+      IU.showToast('Match found! Starting session.', 'success');
+
+      sessionStorage.setItem('iu_active_session', JSON.stringify({
+        roomId, isInitiator, myPeerId, partnerId
+      }));
+
+      setTimeout(() => window.location.href = 'call.html', 700);
+    }
+
+    function cancelQueue() {
+      searching = false;
+      clearInterval(searchInterval);
+      IU.leaveQueue(myPeerId);
+      document.getElementById('sweep').classList.remove('active');
+      document.getElementById('b3').style.display = 'none';
+      document.getElementById('qTitle').textContent = 'Ready to Connect?';
+      document.getElementById('qStatus').classList.remove('visible');
+      document.getElementById('findBtn').style.display = '';
+      document.querySelector('#qActions .btn-outline')?.remove();
+      IU.showToast('Left the queue.', 'info');
+    }
+
+    // Cleanup on exit
+    window.addEventListener('beforeunload', () => IU.leaveQueue(myPeerId));
+  </script>
+</body>
+</html>

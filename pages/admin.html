@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <style>
+    body { overflow:hidden; }
+    .layout { display:flex; height:100vh; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width:210px; flex-shrink:0; border-right:1px solid var(--border);
+      background:var(--bg2); display:flex; flex-direction:column;
+    }
+    .sb-head {
+      padding:18px 22px; border-bottom:1px solid var(--border);
+      font-family:var(--font-hd); font-size:14px; font-weight:900; letter-spacing:0.1em;
+    }
+    .sb-head .c { color:var(--cyan); }
+    .sb-lbl { padding:14px 22px 6px; font-family:var(--font-mono); font-size:10px; color:var(--muted2); letter-spacing:0.16em; text-transform:uppercase; }
+    .sb-link {
+      display:flex; align-items:center; gap:11px; padding:11px 22px;
+      font-family:var(--font-hd); font-size:11px; font-weight:700;
+      letter-spacing:0.12em; text-transform:uppercase; color:var(--muted);
+      cursor:pointer; border-left:2px solid transparent;
+      transition:color 0.2s,background 0.2s,border-color 0.2s; text-decoration:none;
+    }
+    .sb-link:hover { color:var(--cyan); background:rgba(0,220,255,0.04); }
+    .sb-link.active { color:var(--cyan); background:rgba(0,220,255,0.07); border-left-color:var(--cyan); }
+    .sb-link svg { width:14px; height:14px; flex-shrink:0; }
+    .sb-bottom { margin-top:auto; border-top:1px solid var(--border); }
+
+    /* CONTENT */
+    .content { flex:1; overflow-y:auto; background:var(--bg); }
+    .ct-topbar {
+      height:54px; padding:0 32px; border-bottom:1px solid var(--border); background:var(--bg2);
+      display:flex; align-items:center; justify-content:space-between;
+      position:sticky; top:0; z-index:10;
+    }
+    .ct-title { font-family:var(--font-hd); font-size:13px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; color:var(--white); }
+    .ct-body { padding:28px 32px; }
+
+    /* STATS */
+    .st-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:28px; }
+    .st-card {
+      background:var(--bg2); border:1px solid var(--border); padding:22px 26px; position:relative;
+    }
+    .st-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--cyan); }
+    .st-card.m::before { background:var(--magenta); }
+    .st-v { font-family:var(--font-hd); font-size:30px; font-weight:900; letter-spacing:-0.01em; color:var(--cyan); text-shadow:0 0 20px rgba(0,220,255,0.3); }
+    .st-v.m { color:var(--magenta); text-shadow:0 0 20px rgba(255,0,119,0.3); }
+    .st-l { font-family:var(--font-mono); font-size:10px; color:var(--muted); letter-spacing:0.14em; text-transform:uppercase; margin-top:4px; }
+
+    /* TABLE */
+    .tbl-wrap { background:var(--bg2); border:1px solid var(--border); margin-bottom:22px; }
+    .tbl-head { padding:13px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .tbl-title { font-family:var(--font-hd); font-size:11px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--cyan); }
+    .dt { width:100%; border-collapse:collapse; font-size:13px; }
+    .dt th { text-align:left; font-family:var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted2); padding:9px 18px; border-bottom:1px solid var(--border); font-weight:400; }
+    .dt td { padding:11px 18px; border-bottom:1px solid var(--border); color:var(--white); vertical-align:middle; }
+    .dt tr:last-child td { border-bottom:none; }
+    .dt tbody tr:hover td { background:rgba(0,220,255,0.02); }
+    .empty { color:var(--muted); text-align:center; padding:28px!important; font-family:var(--font-mono); font-size:12px; }
+
+    .fb { display:flex; gap:8px; margin-bottom:18px; }
+
+    /* make admin access easy — hint box */
+    .admin-hint {
+      background:rgba(0,220,255,0.05); border:1px solid rgba(0,220,255,0.2);
+      border-left:3px solid var(--cyan); padding:14px 18px; margin-bottom:24px;
+      font-family:var(--font-mono); font-size:12px; color:var(--muted); line-height:1.6;
+    }
+    .admin-hint strong { color:var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sb-head">IU<span class="c">ADMIN</span></div>
+      <div class="sb-lbl">Control Panel</div>
+      <div class="sb-link active" onclick="show('overview')" id="n-overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Overview
+      </div>
+      <div class="sb-link" onclick="show('reports')" id="n-reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Reports
+      </div>
+      <div class="sb-link" onclick="show('users')" id="n-users">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Users
+      </div>
+      <div class="sb-bottom">
+        <div class="sb-link" onclick="IU.logout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </div>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+      <div class="ct-topbar">
+        <span class="ct-title" id="pageTitle">Overview</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);" id="adminName"></span>
+      </div>
+      <div class="ct-body">
+
+        <!-- NOTE: no auth guard so admin can be accessed for demo -->
+        <div class="admin-hint" id="demoHint">
+          <strong>Admin Access:</strong> This panel reads from localStorage. To make your account admin, open browser devtools → Application → Local Storage → <code>iu_users</code>, find your user and change <code>"role":"user"</code> to <code>"role":"admin"</code>. For demo purposes, this page is accessible without role check.
+        </div>
+
+        <!-- OVERVIEW -->
+        <section id="s-overview">
+          <div class="st-grid">
+            <div class="st-card"><div class="st-v" id="sv-users">0</div><div class="st-l">Total Users</div></div>
+            <div class="st-card m"><div class="st-v m" id="sv-sessions">0</div><div class="st-l">Total Sessions</div></div>
+            <div class="st-card m"><div class="st-v m" id="sv-reports">0</div><div class="st-l">Pending Reports</div></div>
+          </div>
+          <div class="tbl-wrap">
+            <div class="tbl-head"><span class="tbl-title">Recent Reports</span><button class="btn-ghost" onclick="show('reports')" style="padding:6px 14px;font-size:10px;">View All</button></div>
+            <table class="dt"><thead><tr><th>Reporter</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="tb-ov"></tbody></table>
+          </div>
+        </section>
+
+        <!-- REPORTS -->
+        <section id="s-reports" style="display:none;">
+          <div class="fb">
+            <button class="btn-cyan" onclick="filterR(null)"      id="fa" style="padding:8px 16px;font-size:10px;">All</button>
+            <button class="btn-ghost" onclick="filterR('pending')" id="fp" style="padding:8px 16px;font-size:10px;">Pending</button>
+            <button class="btn-ghost" onclick="filterR('reviewed')"id="fr" style="padding:8px 16px;font-size:10px;">Reviewed</button>
+          </div>
+          <div class="tbl-wrap">
+            <div class="tbl-head"><span class="tbl-title">All Reports</span></div>
+            <table class="dt"><thead><tr><th>Reporter</th><th>Reason</th><th>Details</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="tb-reports"></tbody></table>
+          </div>
+        </section>
+
+        <!-- USERS -->
+        <section id="s-users" style="display:none;">
+          <div class="tbl-wrap">
+            <div class="tbl-head"><span class="tbl-title">Registered Users</span></div>
+            <table class="dt"><thead><tr><th>Name</th><th>Email</th><th>Age</th><th>Reports</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+            <tbody id="tb-users"></tbody></table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- BAN CONFIRM MODAL -->
+  <div class="modal-overlay" id="banModal">
+    <div class="modal">
+      <h2 class="modal-title">Ban User</h2>
+      <p class="modal-sub">This immediately suspends the account. The user cannot sign in.</p>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">Reason</label>
+        <input class="form-input" id="banReason" placeholder="e.g. Harassment"/>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeBan()">Cancel</button>
+        <button class="btn-outline" onclick="doBan()">Confirm Ban</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+  <script src="../js/iu.js"></script>
+  <script>
+    const currentUser = IU.getCurrentUser();
+    if (currentUser) document.getElementById('adminName').textContent = currentUser.name || currentUser.email;
+
+    let pendingBanId = null;
+
+    function badge(txt, type) {
+      const cls = { cyan:'badge-cyan', magenta:'badge-magenta', white:'badge-white', success:'badge-success' };
+      return `<span class="badge ${cls[type]||'badge-white'}">${txt}</span>`;
+    }
+
+    function loadStats() {
+      const s = IU.getStats();
+      document.getElementById('sv-users').textContent = s.totalUsers;
+      document.getElementById('sv-sessions').textContent = s.totalSessions;
+      document.getElementById('sv-reports').textContent = s.pendingReports;
+    }
+
+    function loadOverview() {
+      loadStats();
+      const r = IU.getReports().slice(0, 6);
+      const tb = document.getElementById('tb-ov');
+      tb.innerHTML = '';
+      if (!r.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No reports yet.</td></tr>'; return; }
+      r.forEach(rep => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-family:var(--font-mono);font-size:11px;">${rep.reportedByName||rep.reportedBy||'Unknown'}</td><td>${badge(rep.reason,'magenta')}</td><td>${badge(rep.status,'cyan')}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">${new Date(rep.createdAt).toLocaleDateString()}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function loadReports(status = null) {
+      const all = IU.getReports().filter(r => !status || r.status === status);
+      const tb = document.getElementById('tb-reports');
+      tb.innerHTML = '';
+      if (!all.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No reports.</td></tr>'; return; }
+      all.forEach(rep => {
+        const tr = document.createElement('tr');
+        const acts = rep.status === 'pending'
+          ? `<div style="display:flex;gap:6px;"><button class="btn-ghost" onclick="markReviewed('${rep.id}')" style="padding:5px 10px;font-size:10px;">Reviewed</button></div>`
+          : `<span style="font-size:11px;color:var(--muted);">Closed</span>`;
+        tr.innerHTML = `<td style="font-family:var(--font-mono);font-size:11px;">${rep.reportedByName||'—'}</td><td>${badge(rep.reason,'magenta')}</td><td style="max-width:160px;font-size:12px;color:var(--muted);">${rep.details||'—'}</td><td>${badge(rep.status,'cyan')}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">${new Date(rep.createdAt).toLocaleDateString()}</td><td>${acts}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function markReviewed(id) {
+      IU.resolveReport(id, 'reviewed');
+      IU.showToast('Marked as reviewed.', 'success');
+      loadReports();
+      loadStats();
+    }
+
+    function filterR(status) {
+      ['fa','fp','fr'].forEach(id => document.getElementById(id).className = 'btn-ghost');
+      document.getElementById(status ? 'f' + status[0] : 'fa').className = 'btn-cyan';
+      loadReports(status);
+    }
+
+    function loadUsers() {
+      const users = Object.values(IU.getUsers()).sort((a, b) => b.createdAt - a.createdAt);
+      const tb = document.getElementById('tb-users');
+      tb.innerHTML = '';
+      if (!users.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">No users yet.</td></tr>'; return; }
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        const banBtn = u.isBanned
+          ? `<button class="btn-ghost" onclick="unban('${u.id}')" style="padding:5px 10px;font-size:10px;color:var(--success);border-color:rgba(0,255,153,0.3);">Unban</button>`
+          : `<button class="btn-outline" onclick="openBan('${u.id}')" style="padding:5px 10px;font-size:10px;">Ban</button>`;
+        tr.innerHTML = `<td style="font-weight:700;">${u.name||'—'}</td><td style="font-family:var(--font-mono);font-size:11px;">${u.email}</td><td style="font-family:var(--font-mono);font-size:11px;">${u.age}</td><td style="font-family:var(--font-mono);font-size:11px;${u.reportCount>2?'color:var(--magenta);':''}">${u.reportCount}</td><td>${u.isBanned?badge('Banned','magenta'):badge('Active','success')}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);">${new Date(u.createdAt).toLocaleDateString()}</td><td>${banBtn}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function openBan(id) { pendingBanId = id; document.getElementById('banReason').value = ''; document.getElementById('banModal').classList.add('open'); }
+    function closeBan()  { document.getElementById('banModal').classList.remove('open'); pendingBanId = null; }
+    function doBan() {
+      const r = document.getElementById('banReason').value.trim();
+      if (!r) { IU.showToast('Reason required.', 'error'); return; }
+      IU.banUser(pendingBanId);
+      closeBan(); IU.showToast('User banned.', 'success'); loadUsers(); loadStats();
+    }
+    function unban(id) { IU.unbanUser(id); IU.showToast('User unbanned.', 'success'); loadUsers(); }
+
+    function show(name) {
+      ['overview','reports','users'].forEach(s => {
+        document.getElementById('s-' + s).style.display = 'none';
+        document.getElementById('n-' + s).classList.remove('active');
+      });
+      document.getElementById('s-' + name).style.display = 'block';
+      document.getElementById('n-' + name).classList.add('active');
+      document.getElementById('pageTitle').textContent = { overview:'Overview', reports:'Reports', users:'Users' }[name];
+      if (name === 'overview') loadOverview();
+      if (name === 'reports')  loadReports();
+      if (name === 'users')    loadUsers();
+    }
+
+    loadOverview();
+  </script>
+</body>
+</html>

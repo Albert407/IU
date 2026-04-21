@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Session</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <style>
+    html,body { height:100%; overflow:hidden; }
+
+    /* ── LAYOUT ───────────────────────────────────────── */
+    .shell { height:100vh; display:flex; flex-direction:column; }
+
+    /* ── TOP BAR ──────────────────────────────────────── */
+    .topbar {
+      height:54px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 22px; border-bottom:1px solid var(--border); background:var(--bg2); z-index:10;
+    }
+    .tb-left { display:flex; align-items:center; gap:18px; }
+    .tb-logo { font-family:var(--font-hd); font-size:15px; font-weight:900; letter-spacing:0.1em; }
+    .tb-logo .c { color:var(--cyan); }
+    .tb-status { display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--muted); letter-spacing:0.06em; }
+    .sdot { width:7px;height:7px;border-radius:50%;background:var(--warn);box-shadow:0 0 6px var(--warn); transition:background 0.3s,box-shadow 0.3s; }
+    .sdot.ok  { background:var(--cyan);box-shadow:0 0 8px var(--cyan); }
+    .sdot.err { background:var(--magenta);box-shadow:0 0 8px var(--magenta); }
+
+    .timer-box {
+      font-family:var(--font-hd); font-size:20px; font-weight:800;
+      letter-spacing:0.1em; color:var(--white);
+      padding:5px 18px; border:1px solid var(--border2); position:relative;
+    }
+    .timer-box::before,.timer-box::after { content:'';position:absolute;width:7px;height:7px;border-color:var(--cyan);border-style:solid; }
+    .timer-box::before { top:-1px;left:-1px;border-width:2px 0 0 2px; }
+    .timer-box::after  { bottom:-1px;right:-1px;border-width:0 2px 2px 0; }
+    .timer-box.warn    { color:var(--warn);border-color:rgba(255,149,0,0.4);animation:tPulse 1s ease-in-out infinite; }
+    .timer-box.expired { color:var(--magenta);border-color:rgba(255,0,119,0.4);animation:none; }
+    @keyframes tPulse { 0%,100%{opacity:1}50%{opacity:0.5} }
+
+    /* ── MAIN ─────────────────────────────────────────── */
+    .main { flex:1; display:flex; overflow:hidden; }
+
+    /* ── VIDEO AREA ───────────────────────────────────── */
+    .vid-area {
+      flex:1; background:#030912; position:relative;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    /* scanline on video */
+    .vid-area::after {
+      content:''; position:absolute; inset:0;
+      background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,220,255,0.01) 3px,rgba(0,220,255,0.01) 4px);
+      pointer-events:none; z-index:5;
+    }
+
+    /* BLIND SCREEN */
+    .blind {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:32px; width:100%; height:100%; position:relative; z-index:2;
+    }
+    .b-avatar {
+      width:120px; height:120px; border:2px solid var(--border2);
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-hd); font-size:38px; font-weight:900; color:var(--muted2);
+      position:relative;
+    }
+    .b-avatar::before,.b-avatar::after {
+      content:''; position:absolute; width:12px; height:12px; border-color:var(--cyan); border-style:solid;
+    }
+    .b-avatar::before { top:-1px;left:-1px;border-width:2px 0 0 2px; }
+    .b-avatar::after  { bottom:-1px;right:-1px;border-width:0 2px 2px 0; }
+    .a-ring { position:absolute; inset:-10px; border:1px solid var(--cyan); opacity:0; transform:scale(1); }
+    .a-ring.pop { animation:ringPop 0.7s ease-out; }
+    @keyframes ringPop { 0%{opacity:0.9;transform:scale(1)} 100%{opacity:0;transform:scale(1.5)} }
+
+    .waveform { display:flex; align-items:center; gap:3px; height:48px; }
+    .wb { width:4px; border-radius:2px; background:var(--border2); height:5px; transition:height 0.08s,background 0.08s; }
+    .wb.a { background:var(--cyan); box-shadow:0 0 4px rgba(0,220,255,0.4); }
+
+    .blind-lbl {
+      font-family:var(--font-mono); font-size:11px; color:var(--muted2);
+      letter-spacing:0.16em; text-transform:uppercase;
+      display:flex; align-items:center; gap:12px;
+    }
+    .blind-lbl::before,.blind-lbl::after { content:''; display:block; width:20px; height:1px; background:var(--border2); }
+
+    /* VIDEO GRID */
+    .vid-grid { display:grid; grid-template-columns:1fr 1fr; width:100%; height:100%; position:relative; }
+    .vid-tile { position:relative; background:#030912; overflow:hidden; }
+    .vid-tile:first-child { border-right:1px solid var(--border); }
+    .vid-tile video { width:100%; height:100%; object-fit:cover; }
+    .vid-lbl {
+      position:absolute; bottom:14px; left:14px;
+      font-family:var(--font-mono); font-size:10px; color:rgba(0,220,255,0.8);
+      background:rgba(0,5,10,0.75); padding:4px 10px;
+      border:1px solid var(--border2); letter-spacing:0.08em; text-transform:uppercase;
+    }
+
+    /* REVEAL OVERLAY */
+    .reveal-ov {
+      position:absolute; inset:0; z-index:50;
+      background:rgba(0,5,10,0.9); backdrop-filter:blur(10px);
+      display:flex; align-items:center; justify-content:center;
+      animation:fadeIn 0.4s ease;
+    }
+    .reveal-box {
+      text-align:center; padding:52px 44px; max-width:420px;
+      background:var(--bg2); border:1px solid var(--border2); position:relative;
+    }
+    .reveal-box::before,.reveal-box::after {
+      content:''; position:absolute; width:16px; height:16px; border-color:var(--cyan); border-style:solid;
+    }
+    .reveal-box::before { top:-1px;left:-1px;border-width:2px 0 0 2px; }
+    .reveal-box::after  { bottom:-1px;right:-1px;border-width:0 2px 2px 0; }
+    .reveal-eye {
+      width:60px; height:60px; border:2px solid var(--cyan); border-radius:50%;
+      margin:0 auto 22px; display:flex; align-items:center; justify-content:center;
+      font-size:26px; box-shadow:0 0 20px rgba(0,220,255,0.25);
+      animation:glowPulse 2s ease-in-out infinite;
+    }
+    .reveal-title { font-family:var(--font-hd);font-size:20px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px; }
+    .reveal-sub { font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:24px; }
+    .reveal-cd { font-family:var(--font-mono);font-size:12px;color:var(--cyan);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:22px; }
+    .reveal-acts { display:flex;gap:12px; }
+    .reveal-acts>* { flex:1; }
+    .reveal-wait { font-family:var(--font-mono);font-size:11px;color:var(--muted2);margin-top:14px;letter-spacing:0.06em; }
+
+    /* CHAT */
+    .chat-panel {
+      width:292px; flex-shrink:0; border-left:1px solid var(--border);
+      background:var(--bg2); display:flex; flex-direction:column;
+    }
+    .chat-head {
+      padding:13px 18px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+    }
+    .chat-head-t { font-family:var(--font-hd);font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--cyan); }
+    .msgs { flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px; }
+    .msg { display:flex;flex-direction:column;gap:3px;max-width:90%; }
+    .msg.me { align-self:flex-end;align-items:flex-end; }
+    .msg.them { align-self:flex-start; }
+    .bubble { padding:9px 12px;font-size:13px;line-height:1.5; }
+    .msg.me   .bubble { background:rgba(0,220,255,0.1);color:var(--white);border:1px solid rgba(0,220,255,0.2); }
+    .msg.them .bubble { background:rgba(255,255,255,0.04);color:var(--white);border:1px solid var(--border); }
+    .msg-time { font-family:var(--font-mono);font-size:9px;color:var(--muted2);padding:0 4px; }
+    .msg-blocked { align-self:center;font-family:var(--font-mono);font-size:10px;color:var(--magenta);background:rgba(255,0,119,0.07);border:1px solid rgba(255,0,119,0.2);padding:5px 12px; }
+    .msg-sys { align-self:center;font-family:var(--font-mono);font-size:10px;color:var(--muted2);letter-spacing:0.06em; }
+    .chat-in-area { padding:11px;border-top:1px solid var(--border);flex-shrink:0; }
+    .chat-row { display:flex;gap:8px;align-items:flex-end; }
+    .chat-ta {
+      flex:1;background:rgba(0,220,255,0.04);border:1px solid var(--border);border-bottom:1px solid var(--border2);
+      padding:9px 11px;color:var(--white);font-family:var(--font-mono);font-size:13px;resize:none;outline:none;max-height:88px;line-height:1.4;
+    }
+    .chat-ta::placeholder { color:var(--muted2); }
+    .chat-ta:focus { border-color:var(--cyan); }
+    .send-btn {
+      width:36px;height:36px;background:var(--cyan);border:none;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+      transition:background 0.2s,box-shadow 0.2s; flex-shrink:0;
+    }
+    .send-btn:hover { background:#fff;box-shadow:var(--glow-c); }
+    .send-btn svg { width:14px;height:14px; }
+
+    /* CONTROL BAR */
+    .ctrl-bar {
+      padding:12px 22px; border-top:1px solid var(--border); background:var(--bg2);
+      display:flex; align-items:center; justify-content:center; gap:12px; flex-shrink:0;
+    }
+    .cb { width:46px;height:46px;background:rgba(0,220,255,0.05);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,border-color 0.2s,box-shadow 0.2s;color:var(--muted);clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%); }
+    .cb:hover { background:rgba(0,220,255,0.1);border-color:var(--cyan);color:var(--cyan);box-shadow:var(--glow-c); }
+    .cb.muted { background:rgba(255,0,119,0.1);border-color:rgba(255,0,119,0.4);color:var(--magenta); }
+    .cb svg { width:18px;height:18px; }
+    .end-btn { width:54px;height:54px;background:var(--magenta);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;clip-path:polygon(7px 0%,100% 0%,calc(100% - 7px) 100%,0% 100%);transition:background 0.2s,box-shadow 0.2s; }
+    .end-btn:hover { background:var(--magenta2);box-shadow:var(--glow-m); }
+    .end-btn svg { width:20px;height:20px; }
+
+    /* REPORT MODAL */
+    .r-opts { display:flex;flex-direction:column;gap:6px;margin:14px 0; }
+    .r-opt { display:flex;align-items:flex-start;gap:12px;padding:11px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s,background 0.2s; }
+    .r-opt:hover { border-color:var(--border2);background:rgba(0,220,255,0.03); }
+    .r-opt input[type=radio] { accent-color:var(--cyan);margin-top:2px;flex-shrink:0; }
+    .r-opt-t { font-size:14px;font-weight:600;color:var(--white); }
+    .r-opt-s { font-size:12px;color:var(--muted);font-family:var(--font-mono); }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <div class="shell">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="tb-left">
+        <span class="tb-logo">IU<span class="c">CONNECT</span></span>
+        <div class="tb-status">
+          <div class="sdot" id="sdot"></div>
+          <span id="stxt">Connecting...</span>
+        </div>
+      </div>
+      <div class="timer-box" id="timer">15:00</div>
+      <button class="btn-ghost" onclick="openReport()" style="padding:7px 14px;font-size:10px;">Report</button>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <!-- VIDEO AREA -->
+      <div class="vid-area" id="vidArea">
+
+        <!-- BLIND PHASE -->
+        <div class="blind" id="blindScreen">
+          <div class="b-avatar" style="position:relative;">
+            ?
+            <div class="a-ring" id="aring"></div>
+          </div>
+          <div class="waveform" id="wf"></div>
+          <div class="blind-lbl">Audio Only &mdash; No Camera</div>
+        </div>
+
+        <!-- VIDEO PHASE (hidden) -->
+        <div id="vidScreen" style="display:none;width:100%;height:100%;">
+          <div class="vid-grid">
+            <div class="vid-tile">
+              <video id="remoteVid" autoplay playsinline></video>
+              <div class="vid-lbl">Partner</div>
+            </div>
+            <div class="vid-tile">
+              <video id="localVid" autoplay playsinline muted></video>
+              <div class="vid-lbl">You</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REVEAL OVERLAY -->
+        <div class="reveal-ov" id="revealOv" style="display:none;">
+          <div class="reveal-box">
+            <div class="reveal-eye">&#9728;</div>
+            <h2 class="reveal-title">Time Expired</h2>
+            <p class="reveal-sub">Enable cameras? Both must agree. One decline ends the session.</p>
+            <div class="reveal-cd" id="rcd">30s remaining</div>
+            <div class="reveal-acts" id="racts">
+              <button class="btn-cyan" onclick="vote(true)" style="padding:13px;font-size:13px;">Reveal</button>
+              <button class="btn-outline" onclick="vote(false)" style="padding:12px;font-size:13px;">Decline</button>
+            </div>
+            <div class="reveal-wait" id="rwait" style="display:none;">Waiting for partner...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHAT PANEL -->
+      <div class="chat-panel">
+        <div class="chat-head">
+          <span class="chat-head-t">Session Chat</span>
+          <span class="badge badge-cyan" id="phaseLabel">Blind</span>
+        </div>
+        <div class="msgs" id="msgs">
+          <div class="msg-sys">Session started. Say hi.</div>
+        </div>
+        <div class="chat-in-area">
+          <div class="chat-row">
+            <textarea class="chat-ta" id="chatIn" placeholder="Type..." rows="1"></textarea>
+            <button class="send-btn" onclick="sendMsg()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROL BAR -->
+    <div class="ctrl-bar">
+      <button class="cb" id="muteBtn" onclick="toggleMute()" title="Mute/Unmute">
+        <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <button class="end-btn" onclick="endSession()" title="End Session">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- REPORT MODAL -->
+  <div class="modal-overlay" id="reportModal">
+    <div class="modal">
+      <h2 class="modal-title">Report User</h2>
+      <p class="modal-sub">Reports are reviewed by the admin. Select a reason:</p>
+      <div class="r-opts">
+        <label class="r-opt"><input type="radio" name="rr" value="harassment"/>
+          <div><div class="r-opt-t">Harassment / Abuse</div><div class="r-opt-s">Threats, bullying, personal attacks</div></div></label>
+        <label class="r-opt"><input type="radio" name="rr" value="explicit"/>
+          <div><div class="r-opt-t">Explicit Content</div><div class="r-opt-s">Unwanted sexual behavior</div></div></label>
+        <label class="r-opt"><input type="radio" name="rr" value="underage"/>
+          <div><div class="r-opt-t">Appears Underage</div><div class="r-opt-s">User may be under 18</div></div></label>
+        <label class="r-opt"><input type="radio" name="rr" value="spam"/>
+          <div><div class="r-opt-t">Spam / Bot</div></div></label>
+        <label class="r-opt"><input type="radio" name="rr" value="other"/>
+          <div><div class="r-opt-t">Other</div></div></label>
+      </div>
+      <textarea class="form-input" id="rdetails" placeholder="Additional details (optional)" rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeReport()">Cancel</button>
+        <button class="btn-outline" onclick="doReport()">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script src="../js/iu.js"></script>
+  <script>
+    // ── STATE ────────────────────────────────────────────────────────────────
+    const SESSION_MS = 15 * 60 * 1000;
+    const REVEAL_SECS = 30;
+
+    const user = IU.requireAuth('login.html');
+    if (!user) throw '';
+
+    const raw = sessionStorage.getItem('iu_active_session');
+    if (!raw) { window.location.href = 'queue.html'; throw ''; }
+    const sess = JSON.parse(raw);   // { roomId, isInitiator, myPeerId, partnerId }
+
+    let pc = null;           // IU.PeerConnection
+    let chatCh = null;       // BroadcastChannel for chat
+    let sigCh = null;        // BroadcastChannel for WebRTC signaling
+    let timerInt = null;
+    let startTime = Date.now();
+    let isMuted = false;
+    let phase = 'audio';     // audio | reveal | video | ended
+    let myRevealVote = null;
+    let partnerVoted = false;
+    let revealInt = null;
+    let revealSecsLeft = REVEAL_SECS;
+    let revealed = false;
+
+    // ── INIT ─────────────────────────────────────────────────────────────────
+    async function init() {
+      setupWaveform();
+      startTimer();
+      setupSignaling();
+      setupChat();
+      await startPeer();
+    }
+
+    // ── WAVEFORM ─────────────────────────────────────────────────────────────
+    function setupWaveform() {
+      const wf = document.getElementById('wf');
+      for (let i = 0; i < 24; i++) {
+        const b = document.createElement('div'); b.className = 'wb'; b.id = 'wb' + i;
+        wf.appendChild(b);
+      }
+    }
+    function animateWave(stream) {
+      const ctx = new AudioContext();
+      const src = ctx.createMediaStreamSource(stream);
+      const an = ctx.createAnalyser(); an.fftSize = 64;
+      src.connect(an);
+      const d = new Uint8Array(an.frequencyBinCount);
+      (function tick() {
+        if (phase === 'video') return;
+        an.getByteFrequencyData(d);
+        for (let i = 0; i < 24; i++) {
+          const v = d[Math.floor(i * 1.4)] || 0;
+          const h = Math.max(3, Math.min(44, (v / 255) * 44));
+          const el = document.getElementById('wb' + i);
+          if (el) { el.style.height = h + 'px'; el.classList.toggle('a', v > 20); }
+        }
+        requestAnimationFrame(tick);
+      })();
+    }
+
+    // ── TIMER ─────────────────────────────────────────────────────────────────
+    function startTimer() {
+      timerInt = setInterval(() => {
+        const rem = SESSION_MS - (Date.now() - startTime);
+        const el = document.getElementById('timer');
+        if (rem <= 0) {
+          clearInterval(timerInt);
+          el.textContent = '00:00'; el.classList.add('expired');
+          onTimerEnd(); return;
+        }
+        el.textContent = IU.formatTime(rem);
+        if (rem <= 60000) el.classList.add('warn');
+      }, 500);
+    }
+    function onTimerEnd() {
+      if (phase !== 'audio') return;
+      phase = 'reveal';
+      document.getElementById('revealOv').style.display = 'flex';
+      revealInt = setInterval(() => {
+        revealSecsLeft--;
+        document.getElementById('rcd').textContent = revealSecsLeft + 's remaining';
+        if (revealSecsLeft <= 0) { clearInterval(revealInt); resolveReveal(false); }
+      }, 1000);
+      sigCh.postMessage({ type: 'timer_end' });
+    }
+
+    // ── WEBRTC SIGNALING via BroadcastChannel ─────────────────────────────────
+    function setupSignaling() {
+      sigCh = new BroadcastChannel('iu_sig_' + sess.roomId);
+      sigCh.onmessage = async (e) => {
+        const msg = e.data;
+        if (!pc) return;
+
+        if (msg.type === 'offer'  && !sess.isInitiator) {
+          const answer = await pc.handleOffer(msg.sdp);
+          sigCh.postMessage({ type: 'answer', sdp: answer });
+        }
+        if (msg.type === 'answer' && sess.isInitiator) {
+          await pc.handleAnswer(msg.sdp);
+        }
+        if (msg.type === 'ice') {
+          await pc.addIceCandidate(msg.candidate);
+        }
+        if (msg.type === 'timer_end' && phase === 'audio') {
+          phase = 'reveal';
+          document.getElementById('revealOv').style.display = 'flex';
+          startRevealCountdown();
+        }
+        if (msg.type === 'reveal_vote') {
+          partnerVoted = true;
+          checkRevealResult(msg.accepted);
+        }
+        if (msg.type === 'end') {
+          if (phase !== 'ended') onPartnerEnd();
+        }
+      };
+    }
+
+    async function startPeer() {
+      pc = new IU.PeerConnection({
+        isInitiator: sess.isInitiator,
+        onRemoteStream: (stream) => {
+          document.getElementById('remoteVid').srcObject = stream;
+          animateWave(stream);
+          setStatus('ok', 'Connected');
+        },
+        onConnectionState: (state) => {
+          if (state === 'connected') setStatus('ok', 'Connected');
+          else if (state === 'connecting' || state === 'new') setStatus('warn', 'Connecting...');
+          else if (state === 'failed' || state === 'disconnected') { setStatus('err', 'Connection lost'); IU.showToast('Connection lost.', 'error'); }
+        },
+        onIceCandidate: (c) => sigCh.postMessage({ type: 'ice', candidate: c }),
+        onOffer: null,
+        onAnswer: null,
+      });
+
+      try {
+        const ls = await pc.startMedia(false);
+        document.getElementById('localVid').srcObject = ls;
+
+        if (sess.isInitiator) {
+          // Small delay to let receiver set up listener
+          setTimeout(async () => {
+            const offer = await pc.createOffer();
+            sigCh.postMessage({ type: 'offer', sdp: offer });
+          }, 600);
+        }
+      } catch (err) {
+        IU.showToast('Mic error: ' + err.message, 'error');
+        setStatus('err', 'Mic denied');
+      }
+    }
+
+    function setStatus(cls, txt) {
+      const dot = document.getElementById('sdot'), stxt = document.getElementById('stxt');
+      dot.className = 'sdot ' + cls;
+      stxt.textContent = txt;
+    }
+
+    // ── CHAT ─────────────────────────────────────────────────────────────────
+    function setupChat() {
+      chatCh = new BroadcastChannel('iu_chat_' + sess.roomId);
+      chatCh.onmessage = (e) => renderMsg(e.data);
+
+      const ta = document.getElementById('chatIn');
+      ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
+      ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 88) + 'px'; });
+    }
+
+    function sendMsg() {
+      const ta = document.getElementById('chatIn');
+      const text = ta.value.trim();
+      if (!text || phase === 'ended') return;
+      ta.value = ''; ta.style.height = 'auto';
+
+      const filtered = IU.filterMessage(text);
+      const msg = { text: filtered.text, blocked: filtered.blocked, from: user.id, ts: Date.now() };
+      chatCh.postMessage(msg);
+      renderMsg(msg, true); // render own message immediately
+    }
+
+    function renderMsg(msg, isOwn = false) {
+      const c = document.getElementById('msgs');
+      const isMe = isOwn || msg.from === user.id;
+
+      if (msg.blocked) {
+        const el = document.createElement('div');
+        el.className = 'msg-blocked';
+        el.textContent = isMe ? 'Message blocked by moderation.' : 'A message was removed.';
+        c.appendChild(el);
+      } else {
+        const w = document.createElement('div'); w.className = 'msg ' + (isMe ? 'me' : 'them');
+        const b = document.createElement('div'); b.className = 'bubble'; b.textContent = msg.text;
+        const t = document.createElement('div'); t.className = 'msg-time';
+        t.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        w.appendChild(b); w.appendChild(t); c.appendChild(w);
+      }
+      c.scrollTop = c.scrollHeight;
+    }
+
+    // ── REVEAL ────────────────────────────────────────────────────────────────
+    function startRevealCountdown() {
+      revealInt = setInterval(() => {
+        revealSecsLeft--;
+        document.getElementById('rcd').textContent = revealSecsLeft + 's remaining';
+        if (revealSecsLeft <= 0) { clearInterval(revealInt); resolveReveal(false); }
+      }, 1000);
+    }
+
+    function vote(accepted) {
+      if (myRevealVote !== null) return;
+      myRevealVote = accepted;
+      clearInterval(revealInt);
+      document.getElementById('racts').style.display = 'none';
+      document.getElementById('rwait').style.display = 'block';
+      sigCh.postMessage({ type: 'reveal_vote', accepted });
+      if (!accepted) { resolveReveal(false); return; }
+      if (partnerVoted) checkRevealResult(true);
+    }
+
+    function checkRevealResult(partnerAccepted) {
+      if (!partnerAccepted) { resolveReveal(false); return; }
+      if (myRevealVote === true) resolveReveal(true);
+      // else wait for my vote
+    }
+
+    async function resolveReveal(approved) {
+      if (phase !== 'reveal') return;
+      phase = approved ? 'video' : 'ended';
+      clearInterval(revealInt);
+      document.getElementById('revealOv').style.display = 'none';
+
+      if (approved) {
+        revealed = true;
+        document.getElementById('blindScreen').style.display = 'none';
+        document.getElementById('vidScreen').style.display = 'block';
+        try {
+          await pc.enableVideo();
+          document.getElementById('localVid').srcObject = pc.localStream;
+        } catch (err) { IU.showToast('Camera error: ' + err.message, 'error'); }
+        document.getElementById('phaseLabel').textContent = 'Video On';
+        document.getElementById('phaseLabel').className = 'badge badge-magenta';
+        IU.showToast('Cameras enabled!', 'success');
+      } else {
+        IU.showToast('Reveal declined. Session ending.', 'info');
+        setTimeout(() => endSession(true), 2000);
+      }
+    }
+
+    // ── CONTROLS ─────────────────────────────────────────────────────────────
+    function toggleMute() {
+      isMuted = !isMuted;
+      pc?.toggleMute(isMuted);
+      document.getElementById('muteBtn').classList.toggle('muted', isMuted);
+    }
+
+    function endSession(skip = false) {
+      if (phase === 'ended') return;
+      if (!skip && !confirm('End this session?')) return;
+      phase = 'ended';
+      clearInterval(timerInt);
+      sigCh?.postMessage({ type: 'end' });
+      cleanup();
+      IU.logSession({ roomId: sess.roomId, revealed, ts: Date.now() });
+      sessionStorage.removeItem('iu_active_session');
+      window.location.href = 'queue.html';
+    }
+
+    function onPartnerEnd() {
+      phase = 'ended'; clearInterval(timerInt);
+      IU.showToast('Your partner ended the session.', 'info');
+      cleanup();
+      IU.logSession({ roomId: sess.roomId, revealed, ts: Date.now() });
+      setTimeout(() => {
+        sessionStorage.removeItem('iu_active_session');
+        window.location.href = 'queue.html';
+      }, 2500);
+    }
+
+    function cleanup() {
+      pc?.destroy();
+      chatCh?.close(); sigCh?.close();
+    }
+
+    // ── REPORT ────────────────────────────────────────────────────────────────
+    function openReport()  { document.getElementById('reportModal').classList.add('open'); }
+    function closeReport() { document.getElementById('reportModal').classList.remove('open'); }
+    function doReport() {
+      const reason = document.querySelector('input[name="rr"]:checked')?.value;
+      if (!reason) { IU.showToast('Select a reason.', 'error'); return; }
+      IU.submitReport({ reportedBy: user.id, reportedByName: user.name, reason, details: document.getElementById('rdetails').value.trim(), sessionId: sess.roomId });
+      closeReport();
+      IU.showToast('Report submitted. Thank you.', 'success');
+    }
+
+    // ── KEYBOARD ──────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.target === document.getElementById('chatIn')) return;
+      if (e.key === 'm' || e.key === 'M') toggleMute();
+    });
+    window.addEventListener('beforeunload', e => {
+      if (phase !== 'ended') { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    init();
+  </script>
+</body>
+</html>

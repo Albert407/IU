@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IU — Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/global.css"/>
+  <style>
+    .auth-page {
+      min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:80px 20px; position:relative;
+    }
+    .auth-page::before {
+      content:''; position:absolute; inset:0;
+      background:radial-gradient(ellipse at 50% 40%,rgba(0,220,255,0.06) 0%,transparent 60%);
+      pointer-events:none;
+    }
+    .auth-card { width:100%; max-width:480px; position:relative; z-index:1; animation:fadeUp 0.5s ease forwards; }
+    .auth-head {
+      background:var(--bg2); border:1px solid var(--border2); border-bottom:none;
+      padding:22px 40px; display:flex; align-items:center; justify-content:space-between;
+    }
+    .auth-logo { font-family:var(--font-hd); font-size:18px; font-weight:900; letter-spacing:0.06em; text-decoration:none; }
+    .auth-logo .c { color:var(--cyan); }
+    .auth-body {
+      background:var(--bg2); border:1px solid var(--border); padding:40px; position:relative;
+    }
+    .auth-body::before,.auth-body::after {
+      content:''; position:absolute; width:14px; height:14px; border-color:var(--cyan); border-style:solid;
+    }
+    .auth-body::before { bottom:-1px;left:-1px;border-width:0 0 2px 2px; }
+    .auth-body::after  { bottom:-1px;right:-1px;border-width:0 2px 2px 0; }
+    .auth-title { font-family:var(--font-hd); font-size:20px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+    .auth-sub { font-size:13px; color:var(--muted); margin-bottom:28px; }
+    .auth-form { display:flex; flex-direction:column; gap:18px; }
+    .age-notice {
+      background:rgba(0,220,255,0.05); border:1px solid rgba(0,220,255,0.2);
+      border-left:3px solid var(--cyan); padding:12px 16px;
+      font-family:var(--font-mono); font-size:12px; color:var(--muted); line-height:1.5;
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .age-notice .ico { color:var(--cyan); flex-shrink:0; }
+    .submit-btn { width:100%; padding:15px; font-size:13px; position:relative; clip-path:none; }
+    .submit-btn .txt { transition:opacity 0.2s; }
+    .submit-btn .spin { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:none; }
+    .submit-btn.loading .txt { opacity:0; }
+    .submit-btn.loading .spin { display:block; }
+    .auth-foot { text-align:center; margin-top:20px; font-size:13px; color:var(--muted); font-family:var(--font-mono); }
+    .auth-foot a { color:var(--cyan); text-decoration:none; }
+    .auth-foot a:hover { text-shadow:0 0 8px var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">IU<span class="c">CONNECT</span></a>
+    <div class="nav-links"><a href="login.html" class="nav-link">Sign In</a></div>
+    <a href="register.html" class="nav-cta">Register</a>
+  </nav>
+
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-head">
+        <a href="../index.html" class="auth-logo">IU<span class="c">CONNECT</span></a>
+        <span class="badge badge-cyan">18+ Only</span>
+      </div>
+      <div class="auth-body">
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-sub">Join the blind connection platform.</p>
+
+        <div class="age-notice">
+          <span class="ico">&#9432;</span>
+          <span>You must be 18 or older. Age is verified at registration. False dates of birth result in a permanent ban.</span>
+        </div>
+
+        <form class="auth-form" id="form" style="margin-top:22px;">
+          <div class="form-group">
+            <label class="form-label">Display Name</label>
+            <input class="form-input" type="text" id="name" placeholder="How others will know you" required/>
+            <span class="form-error" id="nameErr"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" type="email" id="email" placeholder="your@email.com" required/>
+            <span class="form-error" id="emailErr"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input class="form-input" type="date" id="dob" required/>
+            <span class="form-error" id="dobErr"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="form-input" type="password" id="pw" placeholder="Min. 8 characters" required minlength="8"/>
+            <span class="form-error" id="pwErr"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password</label>
+            <input class="form-input" type="password" id="pw2" placeholder="Repeat password" required/>
+            <span class="form-error" id="pw2Err"></span>
+          </div>
+          <button type="submit" class="btn-cyan submit-btn" id="btn">
+            <span class="txt">Create Account</span>
+            <span class="spin"><span class="spinner"></span></span>
+          </button>
+        </form>
+        <p class="auth-foot">Have an account? <a href="login.html">Sign in</a></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+  <script src="../js/iu.js"></script>
+  <script>
+    if (IU.getCurrentUser()) window.location.href = 'queue.html';
+
+    // Max DOB = 18 years ago
+    const dobEl = document.getElementById('dob');
+    const maxD = new Date(); maxD.setFullYear(maxD.getFullYear() - 18);
+    dobEl.max = maxD.toISOString().split('T')[0];
+
+    const btn = document.getElementById('btn');
+    const setErr = (f, m) => {
+      document.getElementById(f + 'Err').textContent = m;
+      document.getElementById(f).classList.toggle('error', !!m);
+    };
+
+    document.getElementById('form').addEventListener('submit', e => {
+      e.preventDefault();
+      ['name','email','dob','pw','pw2'].forEach(f => setErr(f,''));
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const dob = document.getElementById('dob').value;
+      const pw = document.getElementById('pw').value;
+      const pw2 = document.getElementById('pw2').value;
+
+      let ok = true;
+      if (!name)          { setErr('name','Name is required.'); ok=false; }
+      if (!email)         { setErr('email','Email is required.'); ok=false; }
+      if (!dob)           { setErr('dob','Date of birth is required.'); ok=false; }
+      if (pw.length < 8)  { setErr('pw','Min. 8 characters.'); ok=false; }
+      if (pw !== pw2)     { setErr('pw2','Passwords do not match.'); ok=false; }
+      if (!ok) return;
+
+      btn.classList.add('loading'); btn.disabled = true;
+      try {
+        IU.register({ name, email, password: pw, dateOfBirth: dob });
+        IU.showToast('Account created. Welcome to IU!', 'success');
+        setTimeout(() => window.location.href = 'queue.html', 900);
+      } catch(err) {
+        const m = err.message || 'Registration failed.';
+        if (m.includes('18') || m.includes('age')) setErr('dob', m);
+        else if (m.includes('Email')) setErr('email', m);
+        else IU.showToast(m, 'error');
+        btn.classList.remove('loading'); btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
